@@ -1,0 +1,9 @@
+com\example\userservice\exception\UserNotFoundException.class
+com\example\userservice\dto\UserRequest.class
+com\example\userservice\model\User.class
+com\example\userservice\repository\UserRepository.class
+com\example\userservice\UserServiceApplication.class
+com\example\userservice\dto\UserResponse.class
+com\example\userservice\controller\UserController.class
+com\example\userservice\service\UserService.class
+com\example\userservice\exception\EmailAlreadyExistsException.class

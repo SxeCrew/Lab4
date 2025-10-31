@@ -1,0 +1,3 @@
+com\example\userservice\controller\UserControllerTest.class
+com\example\userservice\service\UserServiceTest.class
+com\example\userservice\repository\UserRepositoryTest.class
