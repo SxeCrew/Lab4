@@ -2,6 +2,7 @@ package com.example.userservice.service;
 
 import com.example.userservice.dto.UserRequest;
 import com.example.userservice.dto.UserResponse;
+import com.example.userservice.exception.EmailAlreadyExistsException;
 import com.example.userservice.model.User;
 import com.example.userservice.repository.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -59,12 +60,13 @@ class UserServiceTest {
         when(userRepository.existsByEmail("john@example.com")).thenReturn(true);
 
         assertThatThrownBy(() -> userService.createUser(userRequest))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessage("Email already exists: john@example.com");
+                .isInstanceOf(EmailAlreadyExistsException.class)
+                .hasMessage("Email already exists: john@example.com. Please use a different email address");
 
         verify(userRepository).existsByEmail("john@example.com");
         verify(userRepository, never()).save(any(User.class));
     }
+
 
     @Test
     void shouldGetUserByIdSuccessfully() {
@@ -194,8 +196,8 @@ class UserServiceTest {
         when(userRepository.existsByEmail("existing@example.com")).thenReturn(true);
 
         assertThatThrownBy(() -> userService.updateUser(1L, userRequest))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessage("Email already exists: existing@example.com");
+                .isInstanceOf(EmailAlreadyExistsException.class)
+                .hasMessage("Email already exists: existing@example.com. Email is already taken by another user");
 
         verify(userRepository).findById(1L);
         verify(userRepository).existsByEmail("existing@example.com");
@@ -272,6 +274,41 @@ class UserServiceTest {
 
     @Test
     void shouldHandleEmptyUserList() {
+        when(userRepository.findAllOrderByCreatedAtDesc()).thenReturn(List.of());
+
+        List<UserResponse> result = userService.getAllUsers();
+
+        assertThat(result).isEmpty();
+        verify(userRepository).findAllOrderByCreatedAtDesc();
+    }
+
+    @Test
+    void shouldHandlePartialUpdateWithNullFields() {
+        User existingUser = new User("John Doe", "john@example.com", 30);
+        existingUser.setId(1L);
+
+        UserRequest partialUpdate = new UserRequest();
+        partialUpdate.setName("John Updated");
+        // email и age остаются null
+
+        User updatedUser = new User("John Updated", "john@example.com", 30);
+        updatedUser.setId(1L);
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(existingUser));
+        when(userRepository.save(any(User.class))).thenReturn(updatedUser);
+
+        UserResponse result = userService.updateUser(1L, partialUpdate);
+
+        assertThat(result.getName()).isEqualTo("John Updated");
+        assertThat(result.getEmail()).isEqualTo("john@example.com"); // осталось прежним
+        assertThat(result.getAge()).isEqualTo(30); // осталось прежним
+
+        verify(userRepository).findById(1L);
+        verify(userRepository).save(any(User.class));
+    }
+
+    @Test
+    void shouldHandleEmptyUserListInGetAllUsers() {
         when(userRepository.findAllOrderByCreatedAtDesc()).thenReturn(List.of());
 
         List<UserResponse> result = userService.getAllUsers();

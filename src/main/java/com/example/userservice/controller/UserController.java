@@ -7,31 +7,29 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/users")
+@Validated
 public class UserController {
 
-    private final UserService userService;
-
     @Autowired
-    public UserController(UserService userService) {
-        this.userService = userService;
-    }
+    private UserService userService;
 
     @PostMapping
     public ResponseEntity<UserResponse> createUser(@Valid @RequestBody UserRequest userRequest) {
-        UserResponse userResponse = userService.createUser(userRequest);
-        return new ResponseEntity<>(userResponse, HttpStatus.CREATED);
+        UserResponse user = userService.createUser(userRequest);
+        return ResponseEntity.status(HttpStatus.CREATED).body(user);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<UserResponse> getUserById(@PathVariable Long id) {
-        UserResponse userResponse = userService.getUserById(id);
-        return ResponseEntity.ok(userResponse);
+        UserResponse user = userService.getUserById(id);
+        return ResponseEntity.ok(user);
     }
 
     @GetMapping
@@ -44,8 +42,8 @@ public class UserController {
     public ResponseEntity<UserResponse> updateUser(
             @PathVariable Long id,
             @Valid @RequestBody UserRequest userRequest) {
-        UserResponse userResponse = userService.updateUser(id, userRequest);
-        return ResponseEntity.ok(userResponse);
+        UserResponse user = userService.updateUser(id, userRequest);
+        return ResponseEntity.ok(user);
     }
 
     @DeleteMapping("/{id}")
@@ -58,10 +56,5 @@ public class UserController {
     public ResponseEntity<Long> getUserCount() {
         long count = userService.getUserCount();
         return ResponseEntity.ok(count);
-    }
-
-    @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<String> handleRuntimeException(RuntimeException ex) {
-        return new ResponseEntity<>(ex.getMessage(), HttpStatus.BAD_REQUEST);
     }
 }

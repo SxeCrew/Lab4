@@ -1,8 +1,11 @@
 package com.example.userservice.exception;
 
 public class EmailAlreadyExistsException extends RuntimeException {
-    // Оставляем только один конструктор
-    public EmailAlreadyExistsException(String email) {
-        super("Email already exists: " + email);
+    public EmailAlreadyExistsException(String message) {
+        super(message);
+    }
+
+    public EmailAlreadyExistsException(String email, String message) {
+        super("Email already exists: " + email + ". " + message);
     }
 }

@@ -2,91 +2,97 @@ package com.example.userservice.service;
 
 import com.example.userservice.dto.UserRequest;
 import com.example.userservice.dto.UserResponse;
+import com.example.userservice.exception.EmailAlreadyExistsException;
+import com.example.userservice.exception.UserNotFoundException;
 import com.example.userservice.model.User;
 import com.example.userservice.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
-@Transactional
 public class UserService {
 
-    private final UserRepository userRepository;
-
     @Autowired
-    public UserService(UserRepository userRepository) {
-        this.userRepository = userRepository;
-    }
+    private UserRepository userRepository;
 
     public UserResponse createUser(UserRequest userRequest) {
         if (userRepository.existsByEmail(userRequest.getEmail())) {
-            throw new RuntimeException("Email already exists: " + userRequest.getEmail());
+            throw new EmailAlreadyExistsException(userRequest.getEmail(), "Please use a different email address");
         }
 
-        User user = new User(userRequest.getName(), userRequest.getEmail(), userRequest.getAge());
+        User user = new User();
+        user.setName(userRequest.getName());
+        user.setEmail(userRequest.getEmail());
+        user.setAge(userRequest.getAge());
+        user.setCreatedAt(LocalDateTime.now());
+
         User savedUser = userRepository.save(user);
-        return mapToResponse(savedUser);
+        return mapToUserResponse(savedUser);
     }
 
-    @Transactional(readOnly = true)
     public UserResponse getUserById(Long id) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
-        return mapToResponse(user);
+                .orElseThrow(() -> new UserNotFoundException(id));
+        return mapToUserResponse(user);
     }
 
-    @Transactional(readOnly = true)
     public List<UserResponse> getAllUsers() {
-        return userRepository.findAllOrderByCreatedAtDesc().stream()
-                .map(this::mapToResponse)
+        return userRepository.findAllOrderByCreatedAtDesc()
+                .stream()
+                .map(this::mapToUserResponse)
                 .collect(Collectors.toList());
     }
 
     public UserResponse updateUser(Long id, UserRequest userRequest) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+        User existingUser = userRepository.findById(id)
+                .orElseThrow(() -> new UserNotFoundException(id));
 
-        if (!user.getEmail().equals(userRequest.getEmail()) &&
+        if (userRequest.getEmail() != null &&
+                !existingUser.getEmail().equals(userRequest.getEmail()) &&
                 userRepository.existsByEmail(userRequest.getEmail())) {
-            throw new RuntimeException("Email already exists: " + userRequest.getEmail());
+            throw new EmailAlreadyExistsException(userRequest.getEmail(), "Email is already taken by another user");
         }
 
-        user.setName(userRequest.getName());
-        user.setEmail(userRequest.getEmail());
-        user.setAge(userRequest.getAge());
+        if (userRequest.getName() != null) {
+            existingUser.setName(userRequest.getName());
+        }
+        if (userRequest.getEmail() != null) {
+            existingUser.setEmail(userRequest.getEmail());
+        }
+        if (userRequest.getAge() != null) {
+            existingUser.setAge(userRequest.getAge());
+        }
 
-        User updatedUser = userRepository.save(user);
-        return mapToResponse(updatedUser);
+        User updatedUser = userRepository.save(existingUser);
+        return mapToUserResponse(updatedUser);
     }
 
     public void deleteUser(Long id) {
         if (!userRepository.existsById(id)) {
-            throw new RuntimeException("User not found with id: " + id);
+            throw new UserNotFoundException(id);
         }
         userRepository.deleteById(id);
     }
 
-    @Transactional(readOnly = true)
     public boolean existsByEmail(String email) {
         return userRepository.existsByEmail(email);
     }
 
-    @Transactional(readOnly = true)
     public long getUserCount() {
         return userRepository.count();
     }
 
-    private UserResponse mapToResponse(User user) {
-        return new UserResponse(
-                user.getId(),
-                user.getName(),
-                user.getEmail(),
-                user.getAge(),
-                user.getCreatedAt()
-        );
+    private UserResponse mapToUserResponse(User user) {
+        UserResponse response = new UserResponse();
+        response.setId(user.getId());
+        response.setName(user.getName());
+        response.setEmail(user.getEmail());
+        response.setAge(user.getAge());
+        response.setCreatedAt(user.getCreatedAt());
+        return response;
     }
 }
